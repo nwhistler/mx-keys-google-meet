@@ -1,0 +1,25 @@
+type: plugin4
+name: MxKeysGoogleMeet
+displayName: MX Keys - Google Meet
+description: Mute/unmute, camera, raise hand, captions, screen share, reactions, and leave-call controls for Google Meet with live per-key state on your MX Keypad.
+pluginFileName: MxKeysGoogleMeetPlugin.dll
+version: 0.2.0
+author: Nate Whistler
+copyright: Copyright (c) 2026 Nate Whistler.
+
+pluginFolderWin: bin
+pluginFolderMac: bin
+
+# LogitechCreativeFamily = MX Creative Keypad (the 9 LCD keys) and MX Creative Dialpad —
+# this is the device family your MX Keypad belongs to.
+supportedDevices:
+    - LogitechCreativeFamily
+
+pluginCapabilities:
+    # Universal plugin: no application binding of its own. Assign these actions to a key under
+    # your browser's app profile in Options+ (Adapt to App -> Google Chrome, etc.), same as the
+    # Node.js version did. The bridge + Chrome/Arc/Dia/Firefox extension are what actually confirm
+    # a real Google Meet tab before anything fires.
+    - HasNoApplication
+
+minimumLoupedeckVersion: 6.4

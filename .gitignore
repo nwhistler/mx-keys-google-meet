@@ -1,0 +1,38 @@
+# .NET build output
+bin/
+obj/
+
+# Packaged plugin artifact — regenerate with `logiplugintool pack`, don't commit it.
+# If you want a downloadable build for the beta group, attach it to a GitHub Release
+# instead of committing it here.
+*.lplug4
+
+# .NET / Visual Studio / Rider / VS Code cruft
+*.user
+*.suo
+.vs/
+.idea/
+*.DotSettings.user
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Editor swap/backup files
+*~
+*.swp
+*.swo
+
+# Node (in case any JS tooling gets added to the extension side later)
+node_modules/
+npm-debug.log*
+
+# Never commit the bridge pairing secret if it ever ends up under the repo by mistake —
+# it's supposed to live outside the repo entirely (see MeetBridge.cs's PluginDataDirectory),
+# but this is a deliberate belt-and-suspenders guard.
+bridge-secret.txt

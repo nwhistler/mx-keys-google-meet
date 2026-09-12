@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+    <plugin displayName="MX Keys - Google Meet" homepage="" />
+    <aliases />
+    <modes>
+        <mode name="Main" />
+    </modes>
+    <actions>
+        <!--
+          The legacy SDK warns "Action tags not found" when this collection is empty, even when
+          every real command is dynamic (PluginDynamicCommand, auto-discovered). Keep one inert
+          parser sentinel: deviceType 0 (None) makes it unavailable on every supported device, and
+          its unique name cannot collide with a dynamically-loaded command.
+        -->
+        <group name="Compatibility" displayName="Compatibility">
+            <command name="LegacyParserSentinel" displayName="Legacy parser sentinel" deviceType="0" />
+        </group>
+    </actions>
+    <layouts>
+        <layout name="Main" />
+    </layouts>
+</configuration>

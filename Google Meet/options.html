@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>MX Keys Bridge — Pairing</title>
+<style>
+  body { font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 480px; margin: 32px auto; padding: 0 16px; color: #1a1a1a; }
+  h1 { font-size: 18px; }
+  p { line-height: 1.5; color: #444; }
+  input[type="text"] { width: 100%; box-sizing: border-box; padding: 8px; font-family: monospace; font-size: 13px; }
+  button { padding: 8px 14px; margin-top: 8px; margin-right: 8px; cursor: pointer; }
+  #status { margin-top: 12px; font-size: 13px; }
+  .ok { color: #1a7f37; }
+  .err { color: #cf222e; }
+</style>
+</head>
+<body>
+  <h1>MX Keys Bridge — Pairing</h1>
+  <p>
+    This extension only accepts commands from the MX Keys plugin after it
+    proves it knows this machine's pairing code — that's what stops any other
+    local process from silently muting your mic, leaving a call, or starting
+    Gemini notes. Click "Fetch from plugin" while the Logi plugin is running,
+    or paste the code manually from
+    <code>bridge-secret.txt</code> in the plugin's install folder.
+  </p>
+  <input type="text" id="secret" placeholder="Pairing code" autocomplete="off" spellcheck="false">
+  <div>
+    <button id="fetch">Fetch from plugin</button>
+    <button id="save">Save</button>
+  </div>
+  <div id="status"></div>
+  <script src="options.js"></script>
+</body>
+</html>

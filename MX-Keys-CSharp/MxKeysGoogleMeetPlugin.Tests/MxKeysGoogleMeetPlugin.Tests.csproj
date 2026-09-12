@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <!-- The main project writes a dev .link file + fires a reload deeplink as a post-build step,
+         which only makes sense for the actual plugin build, not a test-only build of the same
+         sources — skip it here. -->
+    <SkipPluginLink>true</SkipPluginLink>
+
+    <!-- Same PluginApi.dll the main project references (host-provided at runtime for the real
+         plugin). The main project marks it <Private>false</Private> — correct there, since
+         LogiPluginService supplies its own copy — but a standalone test executable has no host to
+         supply one, so MeetBridge.cs's calls into PluginLog (which references PluginLogFile, a
+         PluginApi type) throw FileNotFoundException at test run time without a local copy. -->
+    <PluginApiDir Condition="$(OS) == 'Windows_NT'">C:\Program Files\Logi\LogiPluginService\</PluginApiDir>
+    <PluginApiDir Condition="$(OS) != 'Windows_NT'">/Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/</PluginApiDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(PluginApiDir)PluginApi.dll">
+      <Link>PluginApi.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- AdditionalProperties (not Properties) so this still ADDS SkipPluginLink to, rather than
+         replacing, the Configuration/Platform properties MSBuild already flows to a referenced
+         project by default. Without this, building/testing this project also rebuilds the real
+         plugin in whatever configuration this project happens to build in and re-links + reloads
+         it via the main project's own PostBuild target — clobbering a real Release deployment with
+         a stray Debug one just from running `dotnet test` (confirmed live, 2026-09). -->
+    <ProjectReference Include="..\MxKeysGoogleMeetPlugin.csproj">
+      <AdditionalProperties>SkipPluginLink=true</AdditionalProperties>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

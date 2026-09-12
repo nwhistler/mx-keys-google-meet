@@ -1,0 +1,76 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <RootNamespace>Loupedeck.MxKeysGoogleMeetPlugin</RootNamespace>
+    <AssemblyName>MxKeysGoogleMeetPlugin</AssemblyName>
+    <Version>0.2.0</Version>
+
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
+    <!-- Same PluginApi.dll the running Logi Plugin Service uses — host-provided at runtime,
+         never shipped in the plugin package. -->
+    <PluginApiDir Condition="$(OS) == 'Windows_NT'">C:\Program Files\Logi\LogiPluginService\</PluginApiDir>
+    <PluginApiDir Condition="$(OS) != 'Windows_NT'">/Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/</PluginApiDir>
+
+    <PluginDir Condition="$(OS) == 'Windows_NT'">$(LocalAppData)\Logi\LogiPluginService\Plugins\</PluginDir>
+    <PluginDir Condition="$(OS) != 'Windows_NT'">$(HOME)/Library/Application Support/Logi/LogiPluginService/Plugins/</PluginDir>
+
+    <PluginShortName>MxKeysGoogleMeet</PluginShortName>
+
+    <!-- pluginFolderMac/Win in LoupedeckPackage.yaml say the DLL lives under bin/, sibling to
+         metadata/ — so the build output goes to bin/$(Configuration)/bin/, and the link file
+         (below) points one level up at bin/$(Configuration)/, the actual plugin root. -->
+    <PublishRoot>$(MSBuildProjectDirectory)/bin/$(Configuration)/</PublishRoot>
+    <OutputPath>$(PublishRoot)bin/</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="PluginApi">
+      <HintPath>$(PluginApiDir)PluginApi.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The test project lives in a subfolder of this one (MxKeysGoogleMeetPlugin.Tests/) so it can
+         ProjectReference this plugin without a separate top-level layout change; the SDK's default
+         **/*.cs glob would otherwise also compile the test project's own sources (and its bin/obj
+         output) straight into this assembly. -->
+    <Compile Remove="MxKeysGoogleMeetPlugin.Tests\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Looked up at load as an embedded resource named <plugin class namespace>.PluginConfiguration.xml. -->
+    <EmbeddedResource Include="PluginConfiguration.xml">
+      <LogicalName>Loupedeck.MxKeysGoogleMeetPlugin.PluginConfiguration.xml</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Icon glyphs read at runtime via PluginResources.ReadImage("icons.<name>.png"). -->
+    <EmbeddedResource Include="src\Resources\icons\**\*.png">
+      <Link>Resources\icons\%(Filename)%(Extension)</Link>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <Target Name="CopyPackage" AfterTargets="PostBuildEvent">
+    <ItemGroup>
+      <PackageFiles Include="package\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PackageFiles)" DestinationFolder="$(PublishRoot)%(RecursiveDir)" />
+  </Target>
+
+  <!-- Dev loop: write a .link file pointing at the plugin root and hot-reload the running service. -->
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(SkipPluginLink)' != 'true'">
+    <Exec Condition="$(OS) == 'Windows_NT'" Command="echo $(PublishRoot) &gt; &quot;$(PluginDir)$(PluginShortName).link&quot;" />
+    <Exec Condition="$(OS) != 'Windows_NT'" Command="echo &quot;$(PublishRoot)&quot; &gt; &quot;$(PluginDir)$(PluginShortName).link&quot;" />
+    <Message Text="Created plugin link at: $(PluginDir)$(PluginShortName).link" Importance="High" />
+    <Exec Condition="$(OS) == 'Windows_NT'" Command="start loupedeck:plugin/$(PluginShortName)/reload" ContinueOnError="true" />
+    <Exec Condition="$(OS) != 'Windows_NT'" Command="open loupedeck:plugin/$(PluginShortName)/reload" ContinueOnError="true" />
+  </Target>
+
+</Project>

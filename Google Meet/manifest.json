@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "MX Keys Bridge for Google Meet",
+  "version": "0.1.0",
+  "description": "Lets an MX Keys key (via the Logi Options+ plugin) mute/unmute, toggle camera, raise hand, and leave a Google Meet call.",
+  "permissions": ["tabs", "alarms", "storage"],
+  "host_permissions": ["https://meet.google.com/*", "http://127.0.0.1:47624/*"],
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": ["https://meet.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
