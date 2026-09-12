@@ -85,6 +85,14 @@ press one to send it.
 
 ## Known quirks
 
+- **Firefox + HTTPS-Only Mode**: if buttons do nothing and the extension's background
+  console (`about:debugging` → **Inspect**) shows
+  `NS_ERROR_GENERATE_FAILURE(NS_ERROR_MODULE_SECURITY, SSL_ERROR_RX_RECORD_TOO_LONG)`,
+  Firefox's **HTTPS-Only Mode** is silently upgrading the plugin's plain
+  `ws://127.0.0.1:47624` connection to `wss://` — the plugin only speaks plain
+  WebSocket, so the TLS handshake fails immediately. Fix: Firefox **Settings → Privacy
+  & Security → HTTPS-Only Mode → Manage Exceptions…** → add `http://127.0.0.1:47624`
+  → **Allow** → **Save Changes**, then reload the extension and the Meet tab.
 - **Screen share**: pressing the key opens Meet's own share picker (choosing a
   screen/window/tab is a native OS dialog no key can drive for you) — you finish that
   last step yourself. Stopping an active share is fully automatic.
