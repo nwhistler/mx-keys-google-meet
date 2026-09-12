@@ -31,7 +31,16 @@ plugin alone can't reach into your browser.
 
 **Firefox:**
 1. Go to `about:debugging#/runtime/this-firefox`.
-2. Click **Load Temporary Add-on…** and select `Google Meet/manifest.firefox.json`.
+2. Click **Load Temporary Add-on…** and select `Google Meet/firefox/manifest.json`
+   (a Firefox-specific folder, separate from the top-level `manifest.json` used by
+   Chrome/Edge/Brave/Arc/Dia). Firefox doesn't support Manifest V3 service workers —
+   it needs `background.scripts` instead — and picking the wrong manifest fails with
+   `background.service_worker is currently disabled. Add background.scripts.` Firefox's
+   temporary-add-on loader has also been unreliable about respecting a manifest that
+   isn't literally named `manifest.json`, even when you explicitly select the right
+   file — the `firefox/` folder exists specifically so there's no ambiguity: its
+   `manifest.json` is the real Firefox one, and everything else in that folder is a
+   symlink back to the shared extension code.
 3. This lasts until Firefox restarts — you'll need to reload it each session until a
    signed version is available.
 

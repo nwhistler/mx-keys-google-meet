@@ -24,8 +24,10 @@ other.
 1. **Chrome/Edge/Brave/Arc/Dia**: `chrome://extensions` (or that browser's equivalent)
    → enable **Developer mode** → **Load unpacked** → select `Google Meet/`.
 2. **Firefox**: `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…** →
-   select `Google Meet/manifest.firefox.json` directly. Temporary-only until Mozilla
-   signs a packaged build.
+   select `Google Meet/firefox/manifest.json` (a dedicated folder — Firefox's loader
+   is unreliable about non-standard manifest filenames, and Firefox needs
+   `background.scripts` instead of the MV3 `service_worker` the other manifest uses).
+   Temporary-only until Mozilla signs a packaged build.
 3. Open the extension's **options page** (right-click its toolbar icon → Options, or
    find it on the extensions page) and click **Fetch from plugin** then **Save** to
    pair it with the plugin — this has to happen once per browser profile before any
