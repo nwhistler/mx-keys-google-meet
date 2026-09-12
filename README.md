@@ -12,8 +12,10 @@ Two pieces, because a Logi Options+ plugin has no visibility into browser tabs:
 - **[`MX-Keys-CSharp/`](MX-Keys-CSharp/README.md)** — the Logi Actions SDK plugin
   (C#/Loupedeck). Runs a loopback WebSocket server, tracks live Meet state, renders
   each key's live full-bleed icon.
-- **`Google Meet/`** — the browser extension (Chrome/Arc/Dia/Edge/Brave/Firefox). Reads
-  and clicks Meet's own on-screen controls, reports state back to the plugin.
+- **`Google Meet/`** — the browser extension. Tested on Chrome, Dia, and Firefox; Edge,
+  Brave, and Arc use the same Chromium extension APIs and should work identically but
+  haven't been personally verified. Reads and clicks Meet's own on-screen controls,
+  reports state back to the plugin.
 
 Start with the C# project's [README](MX-Keys-CSharp/README.md) for build/run/test
 instructions and its **Security** section for how the two pieces authenticate each
@@ -21,8 +23,9 @@ other.
 
 ## Browser extension setup
 
-1. **Chrome/Edge/Brave/Arc/Dia**: `chrome://extensions` (or that browser's equivalent)
-   → enable **Developer mode** → **Load unpacked** → select `Google Meet/`.
+1. **Chrome/Dia** (tested) **/Edge/Brave/Arc** (untested, should work identically):
+   `chrome://extensions` (or that browser's equivalent) → enable **Developer mode** →
+   **Load unpacked** → select `Google Meet/`.
 2. **Firefox**: `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…** →
    select `Google Meet/firefox/manifest.json` (a dedicated folder — Firefox's loader
    is unreliable about non-standard manifest filenames, and Firefox needs

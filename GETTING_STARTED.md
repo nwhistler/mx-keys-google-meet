@@ -7,7 +7,9 @@ key itself.
 ## What you need
 
 - A Logitech MX Creative Keypad (or MX Creative Console) with Logi Options+ installed.
-- Chrome, Edge, Brave, Arc, Dia, or Firefox.
+- A Chromium-based browser (Chrome, Dia, Edge, Brave, Arc) or Firefox. Chrome, Dia, and
+  Firefox are actually tested; Edge, Brave, and Arc use the same extension APIs as
+  Chrome and should work identically, but haven't been personally verified yet.
 
 ## 1. Install the plugin
 
