@@ -38,9 +38,7 @@ plugin alone can't reach into your browser.
    `background.service_worker is currently disabled. Add background.scripts.` Firefox's
    temporary-add-on loader has also been unreliable about respecting a manifest that
    isn't literally named `manifest.json`, even when you explicitly select the right
-   file — the `firefox/` folder exists specifically so there's no ambiguity: its
-   `manifest.json` is the real Firefox one, and everything else in that folder is a
-   symlink back to the shared extension code.
+   file, so the `firefox/` folder exists to remove that ambiguity entirely.
 3. This lasts until Firefox restarts — you'll need to reload it each session until a
    signed version is available.
 
