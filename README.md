@@ -38,28 +38,6 @@ other.
 4. In Options+: MX Keypad → Customize → All Actions → **Google Meet** group → assign
    actions to keys.
 
-## Publishing to an extension store
-
-Chrome stopped letting regular users sideload unsigned extensions outside Developer
-Mode years ago — a normal install experience requires actually publishing to the
-Chrome Web Store (and separately, Firefox Add-ons / Edge Add-ons for those browsers).
-That's an external process this repo can prepare for but can't complete on its own:
-
-- **[`Google Meet/PRIVACY_POLICY.md`](Google%20Meet/PRIVACY_POLICY.md)** — required by
-  Chrome Web Store's Developer Program Policies for the permissions this extension
-  requests. **Must be hosted at a public URL** (GitHub Pages, a personal site, etc.) —
-  a file bundled in the extension package isn't sufficient for the listing form.
-- **Icons** (`Google Meet/icon{16,32,48,128}.png`) are generated from the Google Meet
-  logo. **Before actually submitting**, decide deliberately whether that's acceptable:
-  Google scrutinizes third-party use of their own trademarks in Web Store listings,
-  and this is a different context than the plugin's own local-only Options+ icon —
-  worth a considered choice (an original mark instead), not a default.
-- A Google Developer account (one-time $5 registration) is required to submit at all.
-- The extension currently requests `tabs`, `alarms`, `storage`, and host permissions
-  for `meet.google.com` and the local loopback bridge — no `debugger` permission (see
-  the C# README's **Known limitations** for why Gemini Notes automation isn't
-  currently shipped, and what it would take to bring back).
-
 ## Known limitations
 
 See the C# project's [README](MX-Keys-CSharp/README.md#known-limitations) for the full,
