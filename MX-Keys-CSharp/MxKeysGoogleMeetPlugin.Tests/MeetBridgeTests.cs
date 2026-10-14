@@ -209,6 +209,49 @@ namespace Loupedeck.MxKeysGoogleMeetPlugin.Tests
         }
 
         [Fact]
+        public async Task Sharing_state_is_tracked_in_both_directions()
+        {
+            using var socket = await this.ConnectAndAuthenticateAsync();
+
+            await SendJsonAsync(socket, new { type = "state", inCall = true, sharing = true });
+            await this.WaitForStateAsync(s => s.Sharing);
+            Assert.True(this._bridge.State.Sharing);
+
+            // The key's whole purpose is flipping back to "not sharing" when a share stops, so the
+            // falling edge matters as much as the rising one.
+            await SendJsonAsync(socket, new { type = "state", inCall = true, sharing = false });
+            await this.WaitForStateAsync(s => !s.Sharing);
+            Assert.False(this._bridge.State.Sharing);
+        }
+
+        [Fact]
+        public async Task Sharing_defaults_to_false_when_the_extension_omits_it()
+        {
+            using var socket = await this.ConnectAndAuthenticateAsync();
+
+            // An older extension build (or the beforeunload reset) may not carry the field at all.
+            // Absent must read as "not sharing" rather than throwing or latching a stale true.
+            await SendJsonAsync(socket, new { type = "state", inCall = true, sharing = true });
+            await this.WaitForStateAsync(s => s.Sharing);
+
+            await SendJsonAsync(socket, new { type = "state", inCall = true, micMuted = true });
+            await this.WaitForStateAsync(s => s.MicMuted == true);
+            Assert.False(this._bridge.State.Sharing);
+        }
+
+        /// <summary>Polls until the bridge's state satisfies <paramref name="predicate"/> or the
+        /// timeout elapses — state arrives asynchronously on the bridge's receive loop, so a bare
+        /// assert straight after a send races it.</summary>
+        private async Task WaitForStateAsync(Func<MeetState, Boolean> predicate, Int32 timeoutMs = 3000)
+        {
+            var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+            while (!predicate(this._bridge.State) && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(25);
+            }
+        }
+
+        [Fact]
         public async Task Oversized_message_disconnects_the_socket_instead_of_crashing()
         {
             using var socket = await this.ConnectAndAuthenticateAsync();

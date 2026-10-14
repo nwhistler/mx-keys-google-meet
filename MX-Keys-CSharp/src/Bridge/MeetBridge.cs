@@ -548,7 +548,8 @@ namespace Loupedeck.MxKeysGoogleMeetPlugin.Bridge
                         : (Boolean?)null;
 
                 var inCall = root.TryGetProperty("inCall", out var ic) && ic.ValueKind == JsonValueKind.True;
-                this.SetState(new MeetState(true, inCall, GetBool("micMuted"), GetBool("cameraOn"), GetBool("handRaised"), GetBool("captionsOn")));
+                var sharing = root.TryGetProperty("sharing", out var sh) && sh.ValueKind == JsonValueKind.True;
+                this.SetState(new MeetState(true, inCall, GetBool("micMuted"), GetBool("cameraOn"), GetBool("handRaised"), GetBool("captionsOn"), sharing));
             }
             catch (JsonException)
             {

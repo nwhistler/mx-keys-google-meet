@@ -128,6 +128,14 @@ function reportState() {
   const handButton = findButton(BUTTON_MATCHERS.hand);
   const captionsButton = findButton(BUTTON_MATCHERS.captions);
   const micOn = isCurrentlyOn(micButton);
+  // Sharing state is the presence of the "Stop presenting" control — the same signal
+  // toggleScreenShare() already uses to decide which direction to toggle. There's no
+  // on/off-labelled button to read like the other toggles have, so this is derived rather
+  // than parsed: visible stop-button means a share is live. Must use findButtonByPattern
+  // (not findButton) for the reason documented on toggleScreenShare — while actively
+  // sharing, that control has no aria-label attribute at all; its accessible name comes
+  // from aria-labelledby, so an [aria-label]-only search never sees it.
+  const sharing = !!findButtonByPattern(BUTTON_MATCHERS.stopSharing);
 
   try {
     api.runtime.sendMessage({
@@ -139,6 +147,7 @@ function reportState() {
       cameraOn: isCurrentlyOn(cameraButton),
       handRaised: handButton ? /lower hand/i.test(handButton.getAttribute('aria-label') || '') : null,
       captionsOn: isCurrentlyOn(captionsButton),
+      sharing,
     });
   } catch {
     // "Extension context invalidated" — this happens when the extension gets
@@ -151,6 +160,10 @@ function reportState() {
 function stopReporting() {
   clearInterval(pollIntervalId);
   observer.disconnect();
+  // Any queued/pending recheck would otherwise still fire after teardown and call back into a
+  // dead extension context; reportState() guards on isContextValid() anyway, but clearing the
+  // flag keeps a stopped reporter genuinely stopped.
+  reportStateQueued = false;
 }
 
 /** Starting a share only gets as far as Meet's own "Share screen" button — the
@@ -274,13 +287,35 @@ function runCommand(command, param) {
       return clickMatched(BUTTON_MATCHERS.captions, command);
     case 'toggle-screen-share':
       toggleScreenShare();
-      return setTimeout(reportState, 200);
+      return scheduleStateRecheck();
     case 'send-reaction':
       return sendReaction(param);
     case 'close-reactions':
       return closeReactionsPicker();
     default:
       console.warn(`[MX Keys Bridge] unknown command "${command}"`);
+  }
+}
+
+/** Re-reads state several times after an action instead of betting on one fixed delay.
+ *
+ * A single setTimeout(reportState, 200) is enough for the mic (Meet flips its aria-label
+ * almost immediately) but NOT for the camera: toggling that starts/stops a physical capture
+ * device, and Meet only relabels the button once the track actually changes, which routinely
+ * takes 300-800ms. The early snapshot then reads the OLD label, and because Meet doesn't
+ * reliably change `aria-label` on the camera button (sometimes only a child node or class
+ * changes, which this file's MutationObserver filter deliberately ignores), the correction
+ * fell through to the 4s poll — showing up as a camera key that lagged seconds behind reality
+ * while the mic key felt instant.
+ *
+ * These checkpoints are cheap: reportState() is a handful of querySelectorAll calls, and
+ * MeetBridge.SetState only republishes when the state actually differs, so the extra calls
+ * collapse into at most one state message on the plugin side. */
+const POST_ACTION_RECHECK_MS = [120, 350, 700, 1200, 2000];
+
+function scheduleStateRecheck() {
+  for (const delay of POST_ACTION_RECHECK_MS) {
+    setTimeout(reportState, delay);
   }
 }
 
@@ -291,16 +326,37 @@ function clickMatched(matcher, command) {
     return;
   }
   button.click();
-  setTimeout(reportState, 200);
+  scheduleStateRecheck();
 }
 
 api.runtime.onMessage.addListener((message) => {
   if (message?.type === 'command') runCommand(message.command, message.param);
 });
 
-// Meet re-renders its toolbar constantly; watch aria-label changes rather than polling the DOM shape.
-const observer = new MutationObserver(() => reportState());
-observer.observe(document.body, { attributes: true, attributeFilter: ['aria-label'], subtree: true });
+// Meet re-renders its toolbar constantly; watch attribute changes rather than polling the DOM shape.
+// aria-label alone misses real state changes — the camera button in particular doesn't always
+// relabel when its track flips, but it does toggle aria-pressed/data-is-muted, so watching only
+// aria-label left the camera key waiting on the 4s poll. reportState() is coalesced below because
+// widening the filter also makes this fire far more often during Meet's normal re-renders.
+const WATCHED_ATTRIBUTES = ['aria-label', 'aria-pressed', 'aria-checked', 'data-is-muted'];
+
+// Meet mutates these attributes in bursts; without coalescing, a single toggle can fire
+// reportState dozens of times in a few milliseconds. A microtask-ish debounce collapses each
+// burst into one read, which matters because reportState walks the DOM on every call.
+let reportStateQueued = false;
+function queueReportState() {
+  if (reportStateQueued) {
+    return;
+  }
+  reportStateQueued = true;
+  setTimeout(() => {
+    reportStateQueued = false;
+    reportState();
+  }, 50);
+}
+
+const observer = new MutationObserver(queueReportState);
+observer.observe(document.body, { attributes: true, attributeFilter: WATCHED_ATTRIBUTES, subtree: true });
 
 // Declared before the first reportState() call so stopReporting() has something
 // valid to clear even if that very first call is the one that fails.
@@ -311,7 +367,7 @@ pollIntervalId = setInterval(reportState, 4000);
 window.addEventListener('beforeunload', () => {
   clearInterval(pollIntervalId);
   try {
-    api.runtime.sendMessage({ type: 'state', inCall: false, micMuted: null, cameraOn: null, handRaised: null, captionsOn: null });
+    api.runtime.sendMessage({ type: 'state', inCall: false, micMuted: null, cameraOn: null, handRaised: null, captionsOn: null, sharing: false });
   } catch {
     // context may already be gone — nothing to do, the tab is closing anyway.
   }

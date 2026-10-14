@@ -30,6 +30,13 @@ let socket = null;
 let reconnectDelayMs = 1000;
 const MAX_RECONNECT_DELAY_MS = 15000;
 let pairingRequired = false;
+// Two independent things call connect() — the close handler (via scheduleReconnect) and the 24s
+// keepalive alarm — and connect() has an `await` before it assigns `socket`, so without a guard
+// both can get past the readyState check and each open a socket, orphaning the other's without
+// closing it. `connecting` closes that window; `reconnectTimer` keeps at most one retry pending so
+// the two callers can't compound into a burst that defeats the backoff entirely.
+let connecting = false;
+let reconnectTimer = null;
 
 /** The Meet tab commands should be routed to. Updated as tabs/windows change focus. */
 let activeMeetTabId = null;
@@ -42,22 +49,43 @@ async function connect() {
   if (pairingRequired) {
     return; // wait for the user to fix pairing via the options page instead of hammering the plugin
   }
+  if (connecting || socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) {
+    return; // another caller is already mid-connect, or we're already live
+  }
 
-  const { bridgeSecret } = await api.storage.local.get('bridgeSecret');
+  connecting = true;
+  let bridgeSecret;
+  try {
+    ({ bridgeSecret } = await api.storage.local.get('bridgeSecret'));
+  } catch (err) {
+    connecting = false;
+    console.warn('[MX Keys Bridge] could not read the saved pairing code:', err.message);
+    return;
+  }
+
   if (!bridgeSecret) {
+    connecting = false;
     console.warn('[MX Keys Bridge] no pairing code saved yet — open this extension\'s options page to pair with the plugin.');
     return;
   }
 
-  socket = new WebSocket(BRIDGE_URL);
+  // Drop any previous socket before replacing the reference, so a half-dead one from an earlier
+  // attempt can't linger unclosed on the plugin side until its 90s reaper notices.
+  if (socket) {
+    try { socket.close(); } catch { /* already gone */ }
+  }
 
-  socket.addEventListener('open', () => {
+  const ws = new WebSocket(BRIDGE_URL);
+  socket = ws;
+  connecting = false;
+
+  ws.addEventListener('open', () => {
     reconnectDelayMs = 1000;
-    socket.send(JSON.stringify({ type: 'auth', secret: bridgeSecret }));
+    ws.send(JSON.stringify({ type: 'auth', secret: bridgeSecret }));
     console.log('[MX Keys Bridge] connected to plugin at', BRIDGE_URL);
   });
 
-  socket.addEventListener('message', (event) => {
+  ws.addEventListener('message', (event) => {
     let message;
     try {
       message = JSON.parse(event.data);
@@ -68,7 +96,12 @@ async function connect() {
     if (message?.type === 'command') routeCommand(message.command, message.param);
   });
 
-  socket.addEventListener('close', (event) => {
+  ws.addEventListener('close', (event) => {
+    // A socket we've already replaced firing its close late must not drag the live one down with
+    // it, nor schedule a redundant reconnect on its behalf.
+    if (socket !== ws) {
+      return;
+    }
     if (event.code === AUTH_FAILED_CLOSE_CODE) {
       pairingRequired = true;
       console.warn('[MX Keys Bridge] plugin rejected the pairing code — open this extension\'s options page and re-pair.');
@@ -76,12 +109,19 @@ async function connect() {
     }
     scheduleReconnect();
   });
-  socket.addEventListener('error', () => socket?.close());
+  ws.addEventListener('error', () => { try { ws.close(); } catch { /* already gone */ } });
 }
 
 function scheduleReconnect() {
-  setTimeout(connect, reconnectDelayMs);
+  if (reconnectTimer !== null) {
+    return; // one retry already pending — don't stack another on top of it
+  }
+  const delay = reconnectDelayMs;
   reconnectDelayMs = Math.min(reconnectDelayMs * 2, MAX_RECONNECT_DELAY_MS);
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connect();
+  }, delay);
 }
 
 // If the user just fixed pairing, let the next keepalive tick (at most ~24s away)
@@ -90,9 +130,13 @@ api.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.bridgeSecret) {
     pairingRequired = false;
     reconnectDelayMs = 1000;
-    if (socket?.readyState !== WebSocket.OPEN && socket?.readyState !== WebSocket.CONNECTING) {
-      connect();
+    // The user just re-paired, so retry now rather than waiting out a backoff that was counting
+    // down against the old (rejected) code. connect() does its own already-connected check.
+    if (reconnectTimer !== null) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
     }
+    connect();
   }
 });
 
@@ -154,6 +198,7 @@ api.runtime.onMessage.addListener((message, sender) => {
       cameraOn: message.cameraOn,
       handRaised: message.handRaised,
       captionsOn: message.captionsOn,
+      sharing: message.sharing,
     });
   }
 });
@@ -165,8 +210,8 @@ api.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== KEEPALIVE_ALARM) return;
   if (socket?.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: 'ping' }));
-  } else if (socket?.readyState !== WebSocket.CONNECTING) {
-    connect();
+  } else {
+    connect(); // no-ops if a connect is already in flight or a retry is pending
   }
 });
 
